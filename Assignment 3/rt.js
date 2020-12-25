@@ -1,7 +1,7 @@
 var canvas;
 var gl;
 //
-var centroid;
+var centroid,centroid2;
 var outer_space_color = vec4(0.8, 0.8, 0.8, 1.0);
 //
 var numTimesToSubdivide = 3;
@@ -13,7 +13,7 @@ var normalsArray = [];
 
 var near = -10;
 var far = 10;
-var radius = 1.5;
+var radius = 2.5;
 var theta = 0.0;
 var phi = 0.0;
 var dr = (5.0 * Math.PI) / 180.0;
@@ -72,14 +72,17 @@ var texture;
 // Ray tracing function - top lvl fnc
 function raytrace(depth)
 {
+  //console.log(depth);
   for (var y = 0; y < imageSize; ++y)
   {
     for (var x = 0; x < imageSize; ++x)
     {
+      //console.log(imageSize);
       pxl_x = ( x / imageSize - 0.5)*2;
       pxl_y = ( y / imageSize - 0.5)*2;
       pxl = vec3( pxl_x, pxl_y, 1.0);
       dir = normalize( pxl, false);
+
 
       // Get color
       var color = trace( pxl, dir, depth);
@@ -149,24 +152,23 @@ function shadow_Feeler(point, ray_orig, ray_dir, source)
 
 function sphere_intersection(sphere_center, sphere_r, ray_orig, ray_dir)
 {
-  ray = vec3(sphere_center - ray_orig);
+  ray = vec3(subtract(sphere_center,ray_orig));
+
   // formulate discriminant formula
   let a = dot(ray_dir, ray_dir);
-  let b = 2*dot(ray, ray_dir);
+  let b = 2*dot(ray,ray_dir);
   let c = dot(ray, ray) - sphere_r*sphere_r;
 
   let discriminant = b*b - 4*a*c;
-  console.log(discriminant);
-    
-  // we only have interaction when we have a root 
-  if(discriminant < 0){
 
+  // we only have interaction when we have a root 
+  if(discriminant < 0 || isNaN(discriminant)){
     console.log("no roots");
-    return -1;
+    return null;
   }
   // return the min root
   else { 
-    console.log(-1*(b+ Math.sqrt(discriminant)/(a*2.0)));
+    console.log("root found ",-1*(b+ Math.sqrt(discriminant)/(a*2.0)));
     return( -1*(b+ Math.sqrt(discriminant)/(a*2.0)));
   }
 }
@@ -253,7 +255,8 @@ window.onload = function init() {
   specularProduct = mult(lightSpecular, materialSpecular);
 
   tetrahedron(va, vb, vc, vd, SPHERE_QUALITY);
-  centroid = (va+vb+vc+vd)/4;
+  centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
+  centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
 
   var nBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
@@ -299,10 +302,9 @@ window.onload = function init() {
 
 function render() {
   raytrace(5); //TODO: Make it work with a slider
-
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  cameraPosition = vec3(0,0,1.5);
+  cameraPosition = vec3(0,0,radius);
 
   modelViewMatrix = lookAt(cameraPosition, at, up);
   projectionMatrix = ortho(left, right, bottom, ytop, near, far);
@@ -319,5 +321,7 @@ function render() {
   gl.uniform3f(camPositionLoc, cameraPosition.x, cameraPosition.y, cameraPosition[2]);
 
   for (var i = 0; i < index; i += 3) gl.drawArrays(gl.TRIANGLES, i, 3);
-  window.requestAnimFrame(render);
+
+  //IMPORTANT!! NOT REQUESTING ANOTHER FRAME FOR NOW
+  //window.requestAnimFrame(render);
 }
