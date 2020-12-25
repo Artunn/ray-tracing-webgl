@@ -73,8 +73,13 @@ function raytrace(depth)
     {
         for (var x = 0; x < imageSize; ++x)
         {
+            pxl_x = ( x / imageSize - 0.5)*2;
+            pxl_y = ( y / imageSize - 0.5)*2;
+            pxl = vec3( pxl_x, pxl_y, 1.0);
+            dir = normalize( pxl, false);
+
             // Get color
-            var color = trace( ray_from_pixel(pxl), depth);
+            var color = trace( pxl, dir, depth);
 
             // Set color values
             image[(y * imageSize + x) * 3 + 0] = 255 * color[0];
@@ -85,37 +90,45 @@ function raytrace(depth)
 }
 
 // fire a ray, return RGB
-function trace( ray, depth) 
+function trace( ray_orig, ray_dir, depth) 
 {
-    if (depth == 0) return;
+    if (depth == 0) {
+        console.log("depth is 0");
+        return;
+    }
 
-    object_point = closest_ray_surface_intersection( ray);
-    if (object_point) return shade( object_point, ray, depth);
-    else return outer_space_color; 
+    let object_point = closest_ray_surface_intersection( ray_orig, ray_dir,);
+
+    if (object_point) {
+        return shade( object_point, ray_orig, ray_dir, depth);
+    }
+    else {
+        return outer_space_color; 
+    }
 }
 
 // return color emitted by surface in ray intersection
-function shade( point, ray, depth)
+function shade( point, ray_orig, ray_dir, depth)
 {
     // assuming single light source
-    if (shadow_Feeler(point, ray, source)) {
+    if (shadow_Feeler(point, ray_orig, ray_dir, source)) {
         add_light(source);
     }
         
     if (shiny(point)) {
-        add_light(trace(reflected_ray(point, ray), depth-1));
+        add_light(trace(reflected_ray(point, ray_orig, ray_dir), depth-1));
     }
         
     //if transparent(point)
     //    add_light(trace(refracted_ray(point, ray), depth-1));
-    return emitted_color(point, ray, lights)
+    return emitted_color(point, ray_orig, ray_dir, lights)
 }
 
-function closest_ray_surface_intersection( ray)
+function closest_ray_surface_intersection( ray_orig, ray_dir)
 {
     // find every point of intersection of each object with the ray. 
     // Return the closest intersection in a bundle that contains info such as surface normal, pointer to surface color info, etc.
-
+    sphere_intersection(vec3(0,0,0), 2);
 }
 
 
@@ -125,31 +138,47 @@ function add_light(source)
 }
 
 // return if ray reaches the light source
-function shadow_Feeler(point, ray, source)
+// we dont trace this recursively.
+function shadow_Feeler(point, ray_orig, ray_dir, source)
 {
 
 }
 
-function sphere_intersection()
+function sphere_intersection(sphere_center, sphere_r, ray_orig, ray_dir)
 {
+    ray = vec3(sphere_center - ray_orig);
+    // formulate discriminant formula
+    let a = dot(ray_dir, ray_dir);
+    let b = 2*dot(ray, ray_dir);
+    let c = dot(ray, ray) - sphere_r*sphere_r;
 
+    let discriminant = b*b - 4*a*c;
+    
+    // we only have interaction when we have a root 
+    if(discriminant < 0){
+        return -1;
+    }
+    // return the min root
+    else { 
+        return( -1*(b+ sqrt(discriminant)/(a*2.0)));
+    }
 }
 
 function cone_intersection()
 {
-    
+    //TODO
 }
 
 // for checkinng if ray intersects with the floor
 function floor_intersection()
 {
-
+    //TODO
 }
 
 // do with triangles using intersection calculations in ray casting slides.
 function polygonal_surface_intersection()
 {
-    
+    //TODO
 }
 
 function triangle(a, b, c) {
@@ -208,8 +237,8 @@ window.onload = function init() {
   //
   //  Load shaders and initialize attribute buffers
   //
-  var program = initShaders(gl, "vertex-shader", "fragment-shader");
-  gl.useProgram(program);
+  program = initShaders( gl, "vertex-shader", "fragment-shader" );
+  gl.useProgram( program );
 
   ambientProduct = mult(lightAmbient, materialAmbient);
   diffuseProduct = mult(lightDiffuse, materialDiffuse);
@@ -261,6 +290,7 @@ window.onload = function init() {
 
 function render() {
     raytrace(5); //TODO: Make it work with a slider
+
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     cameraPosition = vec3(0,0,1.5);
