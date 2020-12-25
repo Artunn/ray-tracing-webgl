@@ -50,6 +50,108 @@ var up = vec3(0.0, 1.0, 0.0);
 
 SPHERE_QUALITY = 5;
 
+var imageSize = 128;
+
+// Create image data
+// Here i used Uint8ClampedArray instead of Uint8Array so that it is clamped.
+// * 3 is for dimension
+var image = new Uint8ClampedArray(imageSize * imageSize * 3);
+
+// Texture coords for quad
+var canvas;
+var gl;
+
+var program;
+
+var texture;
+
+
+// Ray tracing function - top lvl fnc
+function raytrace(depth)
+{
+    for (var y = 0; y < imageSize; ++y)
+    {
+        for (var x = 0; x < imageSize; ++x)
+        {
+            // Get color
+            var color = trace( ray_from_pixel(pxl), depth);
+
+            // Set color values
+            image[(y * imageSize + x) * 3 + 0] = 255 * color[0];
+            image[(y * imageSize + x) * 3 + 1] = 255 * color[1];
+            image[(y * imageSize + x) * 3 + 2] = 255 * color[2];
+        }
+    }
+}
+
+// fire a ray, return RGB
+function trace( ray, depth) 
+{
+    if (depth == 0) return;
+
+    object_point = closest_ray_surface_intersection( ray);
+    if (object_point) return shade( object_point, ray, depth);
+    else return outer_space_color; 
+}
+
+// return color emitted by surface in ray intersection
+function shade( point, ray, depth)
+{
+    // assuming single light source
+    if (shadow_Feeler(point, ray, source)) {
+        add_light(source);
+    }
+        
+    if (shiny(point)) {
+        add_light(trace(reflected_ray(point, ray), depth-1));
+    }
+        
+    //if transparent(point)
+    //    add_light(trace(refracted_ray(point, ray), depth-1));
+    return emitted_color(point, ray, lights)
+}
+
+function closest_ray_surface_intersection( ray)
+{
+    // find every point of intersection of each object with the ray. 
+    // Return the closest intersection in a bundle that contains info such as surface normal, pointer to surface color info, etc.
+
+}
+
+
+function add_light(source)
+{
+
+}
+
+// return if ray reaches the light source
+function shadow_Feeler(point, ray, source)
+{
+
+}
+
+function sphere_intersection()
+{
+
+}
+
+function cone_intersection()
+{
+    
+}
+
+// for checkinng if ray intersects with the floor
+function floor_intersection()
+{
+
+}
+
+// do with triangles using intersection calculations in ray casting slides.
+function polygonal_surface_intersection()
+{
+    
+}
+
 function triangle(a, b, c) {
   pointsArray.push(a);
   pointsArray.push(b);
@@ -158,27 +260,26 @@ window.onload = function init() {
 };
 
 function render() {
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    raytrace(5); //TODO: Make it work with a slider
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-  cameraPosition = vec3(
-    0,0,1.5
-  );
+    cameraPosition = vec3(0,0,1.5);
 
-  modelViewMatrix = lookAt(cameraPosition, at, up);
-  projectionMatrix = ortho(left, right, bottom, ytop, near, far);
+    modelViewMatrix = lookAt(cameraPosition, at, up);
+    projectionMatrix = ortho(left, right, bottom, ytop, near, far);
 
-  normalMatrix = [
-    vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
-    vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
-    vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2]),
-  ];
+    normalMatrix = [
+        vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
+        vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
+        vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2]),
+    ];
 
-  gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
-  gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
-  gl.uniformMatrix3fv(normalMatrixLoc, false, flatten(normalMatrix));
-  gl.uniform3f(camPositionLoc, cameraPosition.x, cameraPosition.y, cameraPosition[2]);
+    gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
+    gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
+    gl.uniformMatrix3fv(normalMatrixLoc, false, flatten(normalMatrix));
+    gl.uniform3f(camPositionLoc, cameraPosition.x, cameraPosition.y, cameraPosition[2]);
 
-  for (var i = 0; i < index; i += 3) gl.drawArrays(gl.TRIANGLES, i, 3);
+    for (var i = 0; i < index; i += 3) gl.drawArrays(gl.TRIANGLES, i, 3);
 
-  window.requestAnimFrame(render);
+    window.requestAnimFrame(render);
 }

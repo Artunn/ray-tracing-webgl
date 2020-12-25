@@ -3,37 +3,23 @@
 
 <script id="vertex-shader" type="x-shader/x-vertex">
 
-attribute vec4 vPosition;
-attribute vec4 vNormal;
-varying vec3 N, L, E;
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
-uniform vec4 lightPosition;
-uniform mat3 normalMatrix;
-
-varying vec3 vertexPos; //vPosition in other one
+attribute vec2 vPosition;
+attribute  vec2 vTexCoord;
+varying vec2 fTexCoord;
 
 void main()
-{
-    vec3 pos = (modelViewMatrix * vPosition).xyz;
-    
-    // check for directional light
-    
-    if(lightPosition.w == 0.0) L = normalize(lightPosition.xyz);
-    else L = normalize( lightPosition.xyz - pos );
-    
-    E = -normalize(pos);
-    N = normalize( normalMatrix*vNormal.xyz);
-
-    gl_Position = projectionMatrix * modelViewMatrix * vPosition;
-
-    vertexPos = vPosition.xyz;
+{    
+    fTexCoord = vTexCoord;
+    gl_Position =  vec4(vPosition.x, vPosition.y, 0.0, 1.0);
 }
 </script>
 
 <script id="fragment-shader" type="x-shader/x-fragment">
 
 precision mediump float;
+
+varying vec2 fTexCoord;
+uniform sampler2D texture;
 
 uniform vec4 ambientProduct;
 uniform vec4 diffuseProduct;
@@ -45,7 +31,9 @@ uniform vec3 cameraPosition;
 varying vec3 vertexPos;
 
 void main()
-{    
+{
+    //vec4 color = texture2D(texture, fTexCoord);
+    
     vec4 fColor;
     
     vec3 H = normalize( L + E );
@@ -72,10 +60,11 @@ void main()
 }
 </script>
 
+
 <script type="text/javascript" src="Common/webgl-utils.js"></script>
 <script type="text/javascript" src="Common/initShaders.js"></script>
 <script type="text/javascript" src="Common/MV.js"></script>
-<script type="text/javascript" src="cghw3.js"></script>
+<script type="text/javascript" src="rt.js"></script>
 
 <body>
 <canvas id="gl-canvas" width="800" height="800">
@@ -83,3 +72,4 @@ Oops ... your browser doesn't support the HTML5 canvas element
 </canvas>
 </body>
 </html>
+
