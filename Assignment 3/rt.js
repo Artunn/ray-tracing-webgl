@@ -3,6 +3,10 @@ var gl;
 //
 var centroid,centroid2;
 var outer_space_color = vec4(0.8, 0.8, 0.8, 1.0);
+
+var reflection_sphr;
+var transparency_sphr;
+var surface_color_sphr;
 //
 var numTimesToSubdivide = 3;
 
@@ -128,20 +132,20 @@ function shade( point, ray_orig, ray_dir, depth)
 
   // check if we are inside the object, view rays and normal should be opposite
   var isInside = false;
-  if( dot(ray_dir,intersection_n) > 0) {
-    intersection_n = -1*intersection_n;
+  if( dot(ray_dir,intersection_n) > 0.0) {
+    intersection_n = intersection_n.map(x => x * (-1))// -1*intersection_n;
     isInside = true;
   }
   //TODO: should make this work object specific at some point 
-  if(reflection > 0) {
+  if(reflection_sphr > 0) {
     // calculate REFLECTION direction & normalize
-    var reflection_dir = vec3(subtract(ray_dir, intersection_n * 2 * dot( ray_dir, intersection_n)));
+    var m = (2* dot( ray_dir, intersection_n));
+    var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
     reflection_dir = normalize( reflection_dir, false);
 
     // trace the reflection ray
-    reflection = trace( point, reflection_dir, depth-1); 
-
-    if(transparent > 0)
+    reflection = trace( add(intersection_pt,intersection_n), reflection_dir, depth-1); 
+    if(transparency_sphr > 0)
     {
       // calculate REFRACTION for transparent objects
       var refraction_dir;
@@ -181,11 +185,6 @@ function closest_ray_surface_intersection( ray_orig, ray_dir)
   // Return the closest intersection in a bundle that contains info such as surface normal, pointer to surface color info, etc.
   
   return sphere_intersection(centroid, radius, ray_orig, ray_dir);
-}
-
-
-function add_light(source)
-{    
 }
 
 function sphere_intersection(sphere_center, sphere_r, ray_orig, ray_dir)
@@ -292,9 +291,13 @@ window.onload = function init() {
   diffuseProduct = mult(lightDiffuse, materialDiffuse);
   specularProduct = mult(lightSpecular, materialSpecular);
 
+  // DRAWS SPHERE
   tetrahedron(va, vb, vc, vd, SPHERE_QUALITY);
   centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
   centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
+  reflection_sphr = 1;
+  transparency_sphr = 0;
+  surface_color_sphr = vec3(0.20, 0.20, 0.20);
 
   var nBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
