@@ -7,6 +7,7 @@ var outer_space_color = vec4(0.8, 0.8, 0.8, 1.0);
 var reflection_sphr;
 var transparency_sphr;
 var surface_color_sphr;
+var sphr_r;
 //
 var numTimesToSubdivide = 3;
 
@@ -17,7 +18,7 @@ var normalsArray = [];
 
 var near = -10;
 var far = 10;
-var radius = 2.5;
+//var radius = 2.5;
 var theta = 0.0;
 var phi = 0.0;
 var dr = (5.0 * Math.PI) / 180.0;
@@ -32,7 +33,7 @@ var vb = vec4(0.0, 0.942809, 0.333333, 1);
 var vc = vec4(-0.816497, -0.471405, 0.333333, 1);
 var vd = vec4(0.816497, -0.471405, 0.333333, 1);
 
-var lightPosition = vec4(1.0, 1.0, 1.0, 0.0);
+var lightPosition = vec4(1.0, 1.0, 0.8, 0.0);
 var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0);
 var lightDiffuse = vec4(1.0, 1.0, 1.0, 1.0);
 var lightSpecular = vec4(1.0, 1.0, 1.0, 1.0);
@@ -76,7 +77,6 @@ var texture;
 // Ray tracing function - top lvl fnc
 function raytrace(depth)
 {
-  //console.log(depth);
   for (var y = 0; y < imageSize; ++y)
   {
     for (var x = 0; x < imageSize; ++x)
@@ -87,9 +87,9 @@ function raytrace(depth)
       pxl = vec3( pxl_x, pxl_y, 1.0);
       dir = normalize( pxl, false);
 
-
       // Get color
       var color = trace( pxl, dir, depth);
+      console.log(":",color);
 
       // Set color values
       image[(y * imageSize + x) * 3 + 0] = 255 * color[0];
@@ -102,9 +102,12 @@ function raytrace(depth)
 // fire a ray, return RGB
 function trace( ray_orig, ray_dir, depth) 
 {
+  console.log(depth);
+  /////////////////// BURAYI SALLADIM AMA BURDA Bİ SIKINTI VAR...
   if (depth == 0) {
     console.log("depth is 0");
-    return;
+    var c = vec3(0.1,0.1,0.2);
+    return c;
   }
 
   let object_point = closest_ray_surface_intersection( ray_orig, ray_dir);
@@ -136,7 +139,7 @@ function shade( point, ray_orig, ray_dir, depth)
     intersection_n = intersection_n.map(x => x * (-1))// -1*intersection_n;
     isInside = true;
   }
-  //TODO: should make this work object specific at some point 
+  //TODO: should make this work object specific at some point
   if(reflection_sphr > 0) {
     // calculate REFLECTION direction & normalize
     var m = (2* dot( ray_dir, intersection_n));
@@ -145,6 +148,9 @@ function shade( point, ray_orig, ray_dir, depth)
 
     // trace the reflection ray
     reflection = trace( add(intersection_pt,intersection_n), reflection_dir, depth-1); 
+    console.log("-->",reflection);
+    
+    // LOOK INTO TRANSPARENCY LATER
     if(transparency_sphr > 0)
     {
       // calculate REFRACTION for transparent objects
@@ -153,7 +159,8 @@ function shade( point, ray_orig, ray_dir, depth)
     }
 
     //TODO
-    surface_color = reflection; 
+    surface_color = vec3(add(reflection, surface_color_sphr)); 
+    console.log("---->",surface_color);
     //surfaceColor = ( 
     //  reflection * fresneleffect + 
     //  refraction * (1 - fresneleffect) * sphere->transparency) * sphere->surfaceColor; 
@@ -184,17 +191,36 @@ function closest_ray_surface_intersection( ray_orig, ray_dir)
   // find every point of intersection of each object with the ray. 
   // Return the closest intersection in a bundle that contains info such as surface normal, pointer to surface color info, etc.
   
-  return sphere_intersection(centroid, radius, ray_orig, ray_dir);
+  return sphere_intersection(centroid, sphr_r, ray_orig, ray_dir);
 }
 
-function sphere_intersection(sphere_center, sphere_r, ray_orig, ray_dir)
+// find and calculate nearest intersection points
+function sphere_intersection(sphere_center, sphr_r, ray_orig, ray_dir)
 {
+  /* I DIDNT USE THIS FUNCTION CUZ IT ALWAYS GIVES D < 0 ???
+
+  ray = vec3(subtract(sphere_center,ray_orig));
+  var disc = dot(ray,ray_dir);
+  console.log("d:",disc);
+  if( disc < 0.0) {
+    return null;
+  }
+  var a = subtract( dot(ray,ray), disc*disc);
+  if( a > sphr_r*sphr_r){
+    return null;
+  }
+  var b = Math.sqrt(sphr_r*sphr_r - a);
+  r1 = disc - b;
+  r2 = disc - b;
+  console.log("...........",r1);
+  return r1;
+  */
   ray = vec3(subtract(sphere_center,ray_orig));
 
   // formulate discriminant formula
   let a = dot(ray_dir, ray_dir);
   let b = 2*dot(ray,ray_dir);
-  let c = dot(ray, ray) - sphere_r*sphere_r;
+  let c = dot(ray, ray) - sphr_r*sphr_r;
 
   let discriminant = b*b - 4*a*c;
 
@@ -286,8 +312,57 @@ window.onload = function init() {
   //
   program = initShaders( gl, "vertex-shader", "fragment-shader" );
   gl.useProgram( program );
+  var pointsArray = [];
+  var texCoordsArray = [];
 
-  ambientProduct = mult(lightAmbient, materialAmbient);
+  // Use a quad to render texture 
+  pointsArray.push(vec2(-1, -1));
+  pointsArray.push(vec2(-1, 1));
+  pointsArray.push(vec2(1, 1));
+  pointsArray.push(vec2(1, -1));
+
+  texCoordsArray.push(vec2(0, 0));
+  texCoordsArray.push(vec2(0, 1));
+  texCoordsArray.push(vec2(1, 1));
+  texCoordsArray.push(vec2(1, 0));
+
+  var tBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, tBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, flatten(texCoordsArray), gl.STATIC_DRAW);
+
+  var vTexCoord = gl.getAttribLocation( program, "vTexCoord");
+  gl.vertexAttribPointer( vTexCoord, 2, gl.FLOAT, false, 0, 0 );
+  gl.enableVertexAttribArray( vTexCoord );
+
+  var vBuffer = gl.createBuffer();
+  gl.bindBuffer( gl.ARRAY_BUFFER, vBuffer);
+  gl.bufferData( gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
+
+  var vPosition = gl.getAttribLocation( program, "vPosition");
+  gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray( vPosition);
+
+  texture = gl.createTexture();
+  gl.bindTexture( gl.TEXTURE_2D, texture);
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+  // Set up texture parameters
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
+
+  // DRAWS SPHERE
+  //tetrahedron(va, vb, vc, vd, SPHERE_QUALITY);
+  //centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
+  //centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
+  centroid = vec3( 0.0, 0.0, 0.2);
+  reflection_sphr = 1;
+  transparency_sphr = 0;
+  surface_color_sphr = vec3(0.20, 0.60, 0.80);
+  sphr_r = 0.5;
+  render();
+  /*ambientProduct = mult(lightAmbient, materialAmbient);
   diffuseProduct = mult(lightDiffuse, materialDiffuse);
   specularProduct = mult(lightSpecular, materialSpecular);
 
@@ -297,7 +372,7 @@ window.onload = function init() {
   centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
   reflection_sphr = 1;
   transparency_sphr = 0;
-  surface_color_sphr = vec3(0.20, 0.20, 0.20);
+  surface_color_sphr = vec3(0.20, 0.60, 0.80);
 
   var nBuffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
@@ -339,10 +414,32 @@ window.onload = function init() {
   gl.uniform1f(gl.getUniformLocation(program, "shininess"), materialShininess);
 
   render();
+  */
 };
 
 function render() {
-  raytrace(5); //TODO: Make it work with a slider
+  raytrace(2);
+
+  gl.clear( gl.COLOR_BUFFER_BIT );
+
+  gl.bindTexture( gl.TEXTURE_2D, texture);
+  gl.texImage2D(
+      gl.TEXTURE_2D,    // target
+      0,                // level
+      gl.RGB,           // image format 
+      imageSize,        // width
+      imageSize,        // height
+      0,                // Border
+      gl.RGB,           // Format
+      gl.UNSIGNED_BYTE, // type
+      image             // Data source
+  );
+
+  gl.drawArrays( gl.TRIANGLE_FAN, 0, 4 );
+
+    //requestAnimationFrame(render);
+  /*
+  raytrace(1); //TODO: Make it work with a slider
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   cameraPosition = vec3(0,0,radius);
@@ -365,4 +462,5 @@ function render() {
 
   //IMPORTANT!! NOT REQUESTING ANOTHER FRAME FOR NOW
   //window.requestAnimFrame(render);
+  */
 }
