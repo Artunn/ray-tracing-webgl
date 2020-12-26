@@ -106,7 +106,7 @@ function trace( ray_orig, ray_dir, depth)
   /////////////////// BURAYI SALLADIM AMA BURDA Bİ SIKINTI VAR...
   if (depth == 0) {
     console.log("depth is 0");
-    var c = vec3(0.1,0.1,0.2);
+    var c = vec3(0.0,0.0,0.0);
     return c;
   }
 
@@ -126,7 +126,7 @@ function trace( ray_orig, ray_dir, depth)
 // return color emitted by surface in ray intersection
 function shade( point, ray_orig, ray_dir, depth)
 {
-  var surface_color;
+  var surface_color; // surface color to be calculated and returned.
   var reflection;
   var refraction;
   var intersection_pt = vec3(add(ray_orig, ray_dir.map(x => x * point))); // intersection point
@@ -140,7 +140,7 @@ function shade( point, ray_orig, ray_dir, depth)
     isInside = true;
   }
   //TODO: should make this work object specific at some point
-  if(reflection_sphr > 0) {
+  if((reflection_sphr > 0.0 || transparency_sphr > 0.0)) {
     // calculate REFLECTION direction & normalize
     var m = (2* dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
@@ -202,24 +202,6 @@ function closest_ray_surface_intersection( ray_orig, ray_dir)
 // find and calculate nearest intersection points
 function sphere_intersection(sphere_center, sphr_r, ray_orig, ray_dir)
 {
-  /* I DIDNT USE THIS FUNCTION CUZ IT ALWAYS GIVES D < 0 ???
-
-  ray = vec3(subtract(sphere_center,ray_orig));
-  var disc = dot(ray,ray_dir);
-  console.log("d:",disc);
-  if( disc < 0.0) {
-    return null;
-  }
-  var a = subtract( dot(ray,ray), disc*disc);
-  if( a > sphr_r*sphr_r){
-    return null;
-  }
-  var b = Math.sqrt(sphr_r*sphr_r - a);
-  r1 = disc - b;
-  r2 = disc - b;
-  console.log("...........",r1);
-  return r1;
-  */
   ray = vec3(subtract(sphere_center,ray_orig));
 
   // formulate discriminant formula
@@ -239,6 +221,7 @@ function sphere_intersection(sphere_center, sphr_r, ray_orig, ray_dir)
     console.log("root found ",-1*(b+ Math.sqrt(discriminant)/(a*2.0)));
     return( -1*(b+ Math.sqrt(discriminant)/(a*2.0)));
   }
+  
 }
 
 function cone_intersection()
@@ -358,9 +341,6 @@ window.onload = function init() {
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
 
   // DRAWS SPHERE
-  //tetrahedron(va, vb, vc, vd, SPHERE_QUALITY);
-  //centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
-  //centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
   centroid = vec3( 0.0, 0.0, 0.2);
   reflection_sphr = 0.7;
   transparency_sphr = 0.5;
@@ -423,7 +403,7 @@ window.onload = function init() {
 };
 
 function render() {
-  raytrace(2);
+  raytrace(3);
 
   gl.clear( gl.COLOR_BUFFER_BIT );
 
