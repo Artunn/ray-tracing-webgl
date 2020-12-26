@@ -146,6 +146,10 @@ function shade( point, ray_orig, ray_dir, depth)
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
     reflection_dir = normalize( reflection_dir, false);
 
+    console.log(intersection_n,ray_dir);
+    var facing_ratio = dot(ray_dir,intersection_n);
+    var fresnel_effect = mix((1 - facing_ratio)**3,1,0.1);
+    var refraction = 0;
     // trace the reflection ray
     reflection = trace( add(intersection_pt,intersection_n), reflection_dir, depth-1); 
     console.log("-->",reflection);
@@ -160,7 +164,8 @@ function shade( point, ray_orig, ray_dir, depth)
 
     //TODO
     surface_color = vec3(add(reflection, surface_color_sphr)); 
-    console.log("---->",surface_color);
+    //surface_color = add(reflection * fresnel_effect, refraction * (1 - fresnel_effect) * transparency_sphr) * surface_color_sphr; 
+    console.log("mm---->" + surface_color);
     //surfaceColor = ( 
     //  reflection * fresneleffect + 
     //  refraction * (1 - fresneleffect) * sphere->transparency) * sphere->surfaceColor; 
@@ -357,8 +362,8 @@ window.onload = function init() {
   //centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
   //centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
   centroid = vec3( 0.0, 0.0, 0.2);
-  reflection_sphr = 1;
-  transparency_sphr = 0;
+  reflection_sphr = 0.7;
+  transparency_sphr = 0.5;
   surface_color_sphr = vec3(0.20, 0.60, 0.80);
   sphr_r = 0.1;
   render();
