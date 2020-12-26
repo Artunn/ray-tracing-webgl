@@ -360,7 +360,7 @@ window.onload = function init() {
   reflection_sphr = 1;
   transparency_sphr = 0;
   surface_color_sphr = vec3(0.20, 0.60, 0.80);
-  sphr_r = 0.5;
+  sphr_r = 0.1;
   render();
   /*ambientProduct = mult(lightAmbient, materialAmbient);
   diffuseProduct = mult(lightDiffuse, materialDiffuse);
