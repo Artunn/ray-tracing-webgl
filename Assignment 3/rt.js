@@ -106,9 +106,12 @@ function trace( ray_orig, ray_dir, depth)
   let object_point = closest_ray_surface_intersection( ray_orig, ray_dir);
 
   if (object_point) {
+    console.log("shading used");
     return shade( object_point, ray_orig, ray_dir, depth);
   }
+  // no intersection, use background color
   else {
+    console.log("background color used");
     return outer_space_color; 
   }
 }
@@ -116,18 +119,60 @@ function trace( ray_orig, ray_dir, depth)
 // return color emitted by surface in ray intersection
 function shade( point, ray_orig, ray_dir, depth)
 {
-  // assuming single light source
-  if (shadow_Feeler(point, ray_orig, ray_dir, source)) {
-    add_light(source);
+  var surface_color;
+  var reflection;
+  var refraction;
+  var intersection_pt = vec3(add(ray_orig, ray_dir.map(x => x * point))); // intersection point
+  var intersection_n = vec3(subtract(intersection_pt, centroid)); // normal at intersection poit
+  intersection_n = normalize(intersection_n, false); 
+
+  // check if we are inside the object, view rays and normal should be opposite
+  var isInside = false;
+  if( dot(ray_dir,intersection_n) > 0) {
+    intersection_n = -1*intersection_n;
+    isInside = true;
   }
-        
-  if (shiny(point)) {
-    add_light(trace(reflected_ray(point, ray_orig, ray_dir), depth-1));
+  //TODO: should make this work object specific at some point 
+  if(reflection > 0) {
+    // calculate REFLECTION direction & normalize
+    var reflection_dir = vec3(subtract(ray_dir, intersection_n * 2 * dot( ray_dir, intersection_n)));
+    reflection_dir = normalize( reflection_dir, false);
+
+    // trace the reflection ray
+    reflection = trace( point, reflection_dir, depth-1); 
+
+    if(transparent > 0)
+    {
+      // calculate REFRACTION for transparent objects
+      var refraction_dir;
+      //TODO
+    }
+
+    //TODO
+    surface_color = reflection; 
+    //surfaceColor = ( 
+    //  reflection * fresneleffect + 
+    //  refraction * (1 - fresneleffect) * sphere->transparency) * sphere->surfaceColor; 
   }
-        
-  //if transparent(point)
-  //    add_light(trace(refracted_ray(point, ray), depth-1));
-  return emitted_color(point, ray_orig, ray_dir, lights)
+  // obj is OPAQUE, don't raytrace anymore.
+  else{
+    var light_dir = vec3(subtract(centroid, intersection_pt));
+    light_dir = normalize(light_dir, false);
+
+    // intersect w/ light vector
+    // loop this for multiple objects
+    if( closest_ray_surface_intersection( centroid, light_dir)){
+      transmission = 0;
+    }
+    
+    //TODO
+    //surfaceColor += sphere->surfaceColor * transmission * 
+    //            std::max(float(0), nhit.dot(lightDirection)) * spheres[i].emissionColor; 
+            
+  }
+
+  //TODO
+  return surface_color;
 }
 
 function closest_ray_surface_intersection( ray_orig, ray_dir)
@@ -141,13 +186,6 @@ function closest_ray_surface_intersection( ray_orig, ray_dir)
 
 function add_light(source)
 {    
-}
-
-// return if ray reaches the light source
-// we dont trace this recursively.
-function shadow_Feeler(point, ray_orig, ray_dir, source)
-{
-
 }
 
 function sphere_intersection(sphere_center, sphere_r, ray_orig, ray_dir)
