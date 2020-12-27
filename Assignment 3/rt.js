@@ -126,33 +126,34 @@ function trace( ray_orig, ray_dir, depth)
 // return color emitted by surface in ray intersection
 function shade( point, ray_orig, ray_dir, depth)
 {
-  var surface_color; // surface color to be calculated and returned.
+  var surface_color = vec3(0,0,0); // surface color to be calculated and returned.
   var reflection;
   var refraction;
   var intersection_pt = vec3(add(ray_orig, ray_dir.map(x => x * point))); // intersection point
   var intersection_n = vec3(subtract(intersection_pt, centroid)); // normal at intersection poit
   intersection_n = normalize(intersection_n, false); 
 
+  var bias = 1/10000;
   // check if we are inside the object, view rays and normal should be opposite
   var isInside = false;
   if( dot(ray_dir,intersection_n) > 0.0) {
     intersection_n = intersection_n.map(x => x * (-1))// -1*intersection_n;
     isInside = true;
   }
+  console.log(reflection_sphr);
   //TODO: should make this work object specific at some point
-  if((reflection_sphr > 0.0 || transparency_sphr > 0.0)) {
+  if(reflection_sphr > 0.0 || transparency_sphr > 0.0) {
     // calculate REFLECTION direction & normalize
-    var m = (2* dot( ray_dir, intersection_n));
+    var m = (2 * dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
     reflection_dir = normalize( reflection_dir, false);
-
-    console.log(intersection_n,ray_dir);
-    var facing_ratio = dot(ray_dir,intersection_n);
-    var fresnel_effect = mix((1 - facing_ratio)**3,1,0.1);
+    var facing_ratio = dot(-1,dot(ray_dir,intersection_n));
+    var fresnel_effect = (1 - facing_ratio)**3 * 0.9 + 1 * 0.1;
     var refraction = 0;
     // trace the reflection ray
+    console.log(intersection_n);
     reflection = trace( add(intersection_pt,intersection_n), reflection_dir, depth-1); 
-    console.log("-->",reflection);
+    console.log("-->",reflection);intersection_n
     
     // LOOK INTO TRANSPARENCY LATER
     if(transparency_sphr > 0)
@@ -164,7 +165,11 @@ function shade( point, ray_orig, ray_dir, depth)
 
     //TODO
     surface_color = vec3(add(reflection, surface_color_sphr)); 
+    //surface_color = mult(vec3(scale(vec3(fresnel_effect,fresnel_effect,fresnel_effect),reflection)),surface_color_sphr);
+    
+    //surface_color = (reflection * fresneleffect + refraction * (1 - fresneleffect) * spheretransparency) * sphere->surfaceColor
     //surface_color = add(reflection * fresnel_effect, refraction * (1 - fresnel_effect) * transparency_sphr) * surface_color_sphr; 
+    console.log("XX",reflection,fresnel_effect,transparency_sphr,surface_color_sphr);
     console.log("mm---->" + surface_color);
     //surfaceColor = ( 
     //  reflection * fresneleffect + 
@@ -184,7 +189,8 @@ function shade( point, ray_orig, ray_dir, depth)
     //TODO
     //surfaceColor += sphere->surfaceColor * transmission * 
     //            std::max(float(0), nhit.dot(lightDirection)) * spheres[i].emissionColor; 
-            
+    surface_color = surface_color + surface_color_sphr * transmission * (dot(intersection_n, light_dir) > 0 ? dot(intersection_n, light_dir) : 0);
+    console.log(surface_color);
   }
 
   //TODO
@@ -342,8 +348,8 @@ window.onload = function init() {
 
   // DRAWS SPHERE
   centroid = vec3( 0.0, 0.0, 0.2);
-  reflection_sphr = 0.7;
-  transparency_sphr = 0.5;
+  reflection_sphr = 0.5;
+  transparency_sphr = 0;
   surface_color_sphr = vec3(0.20, 0.60, 0.80);
   sphr_r = 0.1;
   render();
