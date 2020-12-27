@@ -14,6 +14,7 @@ var sphere_ref = [];
 var sphere_tr = [];
 var sphere_sc = [];
 var sphere_r = [];
+var sphere_em = [];
 //
 var numTimesToSubdivide = 3;
 
@@ -39,7 +40,7 @@ var vb = vec4(0.0, 0.942809, 0.333333, 1);
 var vc = vec4(-0.816497, -0.471405, 0.333333, 1);
 var vd = vec4(0.816497, -0.471405, 0.333333, 1);
 
-var lightPosition = vec4(1.0, 1.0, 0.8, 0.0);
+var lightPosition = vec3(1.0, 1.0, 0.8);
 var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0);
 var lightDiffuse = vec4(1.0, 1.0, 1.0, 1.0);
 var lightSpecular = vec4(1.0, 1.0, 1.0, 1.0);
@@ -79,9 +80,10 @@ var program;
 
 var texture;
 
+var depth_byuser;
 
 // Ray tracing function - top lvl fnc
-function raytrace(depth)
+function raytrace()
 {
   for (var y = 0; y < imageSize; ++y)
   {
@@ -94,7 +96,7 @@ function raytrace(depth)
       dir = normalize( pxl, false);
 
       // Get color
-      var color = trace( pxl, dir, depth);
+      var color = trace( pxl, dir, 0);
       //console.log(":",color);
 
       // Set color values
@@ -108,24 +110,21 @@ function raytrace(depth)
 // fire a ray, return RGB
 function trace( ray_orig, ray_dir, depth) 
 {
-  console.log(depth);
+  //console.log("depth:",depth);
   /////////////////// BURAYI SALLADIM AMA BURDA Bİ SIKINTI VAR...
-  if (depth == 0) {
-    //console.log("depth is 0");
+  /*if (depth == 0) {
+    console.log("depth is 0");
     var c = vec3(0.0,0.0,0.0);
     return c;
-  }
+  }*/
 
   // find the min distanced intersection after looping for each sphere
-  console.log(sphere_r.length);
   var mindist = Number.MAX_SAFE_INTEGER;
   var dist;
   var mini = -1;
   var intersection_pt_i;
   for(var i = 0; i < sphere_r.length; i++)
   {
-    console.log("i: ",i);
-
     var object_point = closest_ray_surface_intersection( ray_orig, ray_dir, i);
   
     if(object_point){
@@ -141,33 +140,28 @@ function trace( ray_orig, ray_dir, depth)
         mini = i;
         intersection_pt_i = intersection_pt;
       }
-    
     }
   }
 
   // shade if intersection found
   if (mini != -1) {
-    return shade( intersection_pt_i, ray_orig, ray_dir, depth, mini);
+    console.log("depth:",depth);
+    return shade( intersection_pt_i, ray_dir, depth, mini);
   }
   // no intersection, use background color
-  else {
-    return outer_space_color; 
-  }
-  
+  return outer_space_color; 
 }
 
 // return color emitted by surface in ray intersection
-function shade( intersection_pt, ray_orig, ray_dir, depth, i)
+function shade( intersection_pt, ray_dir, depth, i)
 {
-
   var surface_color = vec3(0,0,0); // surface color to be calculated and returned.
   var reflection;
   var refraction;
-  //var intersection_pt = vec3(add(ray_orig, ray_dir.map(x => x * point))); // intersection point
   var intersection_n = vec3(subtract(intersection_pt, sphere_centroids[i])); // normal at intersection poit
   intersection_n = normalize(intersection_n, false); 
-
   var bias = 1/10000;
+
   // check if we are inside the object, view rays and normal should be opposite
   var isInside = false;
   if( dot(ray_dir,intersection_n) > 0.0) {
@@ -176,56 +170,67 @@ function shade( intersection_pt, ray_orig, ray_dir, depth, i)
   }
   
   //TODO: should make this work object specific at some point
-  if(sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) {
+  if((sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) && depth < depth_byuser) {
+    console.log("***");
     // calculate REFLECTION direction & normalize
     var m = (2 * dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
     reflection_dir = normalize( reflection_dir, false);
-    var facing_ratio = dot(-1,dot(ray_dir,intersection_n));
-    var fresnel_effect = (1 - facing_ratio)**3 * 0.9 + 1 * 0.1;
+
+    var facing_ratio = dot(ray_dir,intersection_n)*(-1);
+    var fresnel_effect = 0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
+
     var refraction = 0;
+
     // trace the reflection ray
-    reflection = trace( add(intersection_pt,intersection_n), reflection_dir, depth-1); 
+    reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1); 
     
-    // LOOK INTO TRANSPARENCY LATER
+    // TRANSPARENCY - calculate REFRACTION for transparent objects
     if(sphere_tr[i] > 0)
     {
-      // calculate REFRACTION for transparent objects
-      var refraction_dir;
       //TODO
+      var refraction_dir;
     }
-
-    //TODO
-    surface_color = vec3(add(reflection, sphere_sc[i])); 
-    //surface_color = mult(vec3(scale(vec3(fresnel_effect,fresnel_effect,fresnel_effect),reflection)),surface_color_sphr);
-    
-    //surface_color = (reflection * fresneleffect + refraction * (1 - fresneleffect) * spheretransparency) * sphere->surfaceColor
-    //surface_color = add(reflection * fresnel_effect, refraction * (1 - fresnel_effect) * transparency_sphr) * surface_color_sphr; 
-    //console.log("XX",reflection,fresnel_effect,sphere_tr[i],sphere_sc[i]);
-    //console.log("mm---->" + surface_color);
-    //surfaceColor = ( 
-    //  reflection * fresneleffect + 
-    //  refraction * (1 - fresneleffect) * sphere->transparency) * sphere->surfaceColor; 
+    //TODO -add refraction after transparency is implemented.
+    console.log(":<3 ",fresnel_effect);
+    //surface_color = vec3(mult(reflection.map(x => x * fresnel_effect), sphere_sc[i])); 
+    surface_color = vec3(mult(reflection, sphere_sc[i]));
+    console.log("SCCCC:<3 ",surface_color);
   }
   // obj is OPAQUE, don't raytrace anymore.
   else{
-    var light_dir = vec3(subtract(sphere_centroids[i], intersection_pt));
-    light_dir = normalize(light_dir, false);
+    for(var j = 0; j < sphere_r.length; j++)
+    {
+      if(sphere_em[j].some(x => x !== 0)) {
+        var transmission = vec3(1.0,1.0,1.0);
+        var light_dir = vec3(subtract(sphere_centroids[j],intersection_pt));
+        light_dir = normalize( light_dir, false);
 
-    // intersect w/ light vector
-    // loop this for multiple objects
-    if( closest_ray_surface_intersection( sphere_centroids[i], light_dir, i)){
-      transmission = 0;
+        for(var k = 0; k < sphere_r.length; k++)
+        {
+          if( j != k){
+            // SHADOW
+            if( closest_ray_surface_intersection( sphere_centroids[k], light_dir, k)){
+              transmission = vec3(0.1,0.1,0.1);
+              break;
+            }
+          }
+        }
+        console.log("----------------------->",sphere_sc[i]);
+        console.log("----------------------->",transmission);
+        var color_ = mult(sphere_sc[i],transmission).map(x => x * Math.max(0,dot(intersection_n,light_dir)*sphere_em[j]));
+        surface_color = add(surface_color, color_);
+        console.log("surface_colorrrrrrrrrrrrr",surface_color);
+      }
     }
-    
-    //TODO
-    //surfaceColor += sphere->surfaceColor * transmission * 
-    //            std::max(float(0), nhit.dot(lightDirection)) * spheres[i].emissionColor; 
-    surface_color = surface_color + sphere_sc[i] * transmission * (dot(intersection_n, light_dir) > 0 ? dot(intersection_n, light_dir) : 0);
   }
-
   //TODO
-  return surface_color;
+  console.log("surface_color",surface_color);
+  console.log("sphere_em",sphere_em[i]);
+  var finalMatrix = add(surface_color,sphere_em[i]);
+  console.log("returned:",finalMatrix);
+
+  return finalMatrix;
 }
 
 function closest_ray_surface_intersection( ray_orig, ray_dir, i)
@@ -319,13 +324,13 @@ function tetrahedron(a, b, c, d, n) {
   divideTriangle(a, c, d, n);
 }
 
-function fillSpheres(centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r) {
+function fillSpheres(centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r, sphr_em) {
   sphere_centroids.push(centroid);
   sphere_tr.push(transparency_sphr);
   sphere_sc.push(surface_color_sphr);
   sphere_ref.push(reflection_sphr);
   sphere_r.push(sphr_r);
-
+  sphere_em.push(sphr_em);
 }
 
 window.onload = function init() {
@@ -387,9 +392,9 @@ window.onload = function init() {
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
 
   // DRAWS SPHEREs
-  fillSpheres(vec3( 0.0, -0.1, 0.2), 0, vec3(0.20, 0.60, 0.80), 0.5, 0.05);
-  fillSpheres(vec3( 0.0, 0.1, 0.2), 0, vec3(0.60, 0.10, 0.80), 0.5, 0.05);
-  
+  fillSpheres(vec3( 0.0, -0.1, 0.2), 0, vec3(0.20, 0.60, 0.80), 0.5, 0.05, vec3( 0.1, 0.1, 0.1));
+  fillSpheres(vec3( 0.0, 0.1, 0.2), 0, vec3(0.60, 0.10, 0.80), 0.5, 0.05, vec3(  0.1, 0.1, 0.1));
+  depth_byuser = 3;
   render();
   /*ambientProduct = mult(lightAmbient, materialAmbient);
   diffuseProduct = mult(lightDiffuse, materialDiffuse);
