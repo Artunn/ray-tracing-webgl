@@ -40,10 +40,11 @@ var vb = vec4(0.0, 0.942809, 0.333333, 1);
 var vc = vec4(-0.816497, -0.471405, 0.333333, 1);
 var vd = vec4(0.816497, -0.471405, 0.333333, 1);
 
-var lightPosition = vec3(1.0, 1.0, 0.8);
-var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0);
-var lightDiffuse = vec4(1.0, 1.0, 1.0, 1.0);
-var lightSpecular = vec4(1.0, 1.0, 1.0, 1.0);
+var lightPosition = vec3(1.0, 1.0, 1.0);
+var light_Position = vec4(1.0, 1.0, 1.0, 0.0 );
+var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0 );
+var lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
+var lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
 
 var materialAmbient = vec4(1.0, 0.0, 1.0, 1.0);
 var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0);
@@ -110,14 +111,6 @@ function raytrace()
 // fire a ray, return RGB
 function trace( ray_orig, ray_dir, depth) 
 {
-  //console.log("depth:",depth);
-  /////////////////// BURAYI SALLADIM AMA BURDA Bİ SIKINTI VAR...
-  /*if (depth == 0) {
-    console.log("depth is 0");
-    var c = vec3(0.0,0.0,0.0);
-    return c;
-  }*/
-
   // find the min distanced intersection after looping for each sphere
   var mindist = Number.MAX_SAFE_INTEGER;
   var dist;
@@ -155,7 +148,7 @@ function trace( ray_orig, ray_dir, depth)
 // return color emitted by surface in ray intersection
 function shade( intersection_pt, ray_dir, depth, i)
 {
-  var surface_color = vec3(0,0,0); // surface color to be calculated and returned.
+  //var surface_color = vec3(0,0,0); // surface color to be calculated and returned.
   var reflection;
   var refraction;
   var intersection_n = vec3(subtract(intersection_pt, sphere_centroids[i])); // normal at intersection poit
@@ -169,9 +162,7 @@ function shade( intersection_pt, ray_dir, depth, i)
     isInside = true;
   }
   
-  //TODO: should make this work object specific at some point
   if((sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) && depth < depth_byuser) {
-    console.log("***");
     // calculate REFLECTION direction & normalize
     var m = (2 * dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
@@ -180,11 +171,16 @@ function shade( intersection_pt, ray_dir, depth, i)
     var facing_ratio = dot(ray_dir,intersection_n)*(-1);
     var fresnel_effect = 0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
 
-    var refraction = 0;
-
     // trace the reflection ray
+    console.log(":< ",intersection_pt);
+    console.log(":< ",intersection_n);
+    console.log(":< ",intersection_n.map(x => x * bias));
+    console.log(":< ",reflection_dir);
+    console.log(":< ",add(intersection_pt,intersection_n.map(x => x * bias)));
+    console.log(":< ",depth+1);
     reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1); 
-    
+    console.log(":reflection ",depth,reflection);
+
     // TRANSPARENCY - calculate REFRACTION for transparent objects
     if(sphere_tr[i] > 0)
     {
@@ -192,13 +188,13 @@ function shade( intersection_pt, ray_dir, depth, i)
       var refraction_dir;
     }
     //TODO -add refraction after transparency is implemented.
-    console.log(":<3 ",fresnel_effect);
     //surface_color = vec3(mult(reflection.map(x => x * fresnel_effect), sphere_sc[i])); 
-    surface_color = vec3(mult(reflection, sphere_sc[i]));
-    console.log("SCCCC:<3 ",surface_color);
+    //surface_color = vec3(mult(reflection, sphere_sc[i]));
+    console.log("SHADED: ",depth,vec3(mult(reflection.map(x => x * fresnel_effect), sphere_sc[i])));
+    return vec3(mult(reflection.map(x => x * fresnel_effect), sphere_sc[i]));
   }
   // obj is OPAQUE, don't raytrace anymore.
-  else{
+  /*else{
     for(var j = 0; j < sphere_r.length; j++)
     {
       if(sphere_em[j].some(x => x !== 0)) {
@@ -212,6 +208,7 @@ function shade( intersection_pt, ray_dir, depth, i)
             // SHADOW
             if( closest_ray_surface_intersection( sphere_centroids[k], light_dir, k)){
               transmission = vec3(0.1,0.1,0.1);
+              return vec3(0,0,0);
               break;
             }
           }
@@ -228,7 +225,18 @@ function shade( intersection_pt, ray_dir, depth, i)
   console.log("surface_color",surface_color);
   console.log("sphere_em",sphere_em[i]);
   var finalMatrix = add(surface_color,sphere_em[i]);
-  console.log("returned:",finalMatrix);
+  console.log("returned:",finalMatrix);*/
+
+  shadow_dir = subtract(lightPosition,intersection_pt);
+  for(var j = 0; j < sphere_r.length; j++)
+  {
+    if( closest_ray_surface_intersection( sphere_centroids[j], shadow_dir, j)){
+      console.log("SHADOW: ",depth,vec3(0,0,0));
+      return vec3(0,0,0);
+    }
+  }
+  console.log("ELSE: ",depth,sphere_sc[i]);
+  return sphere_sc[i];
 
   return finalMatrix;
 }
@@ -351,6 +359,11 @@ window.onload = function init() {
   //
   program = initShaders( gl, "vertex-shader", "fragment-shader" );
   gl.useProgram( program );
+
+  ambientProduct = mult(lightAmbient, materialAmbient);
+  diffuseProduct = mult(lightDiffuse, materialDiffuse);
+  specularProduct = mult(lightSpecular, materialSpecular);
+
   var pointsArray = [];
   var texCoordsArray = [];
 
@@ -381,6 +394,11 @@ window.onload = function init() {
   gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray( vPosition);
 
+    /*
+  modelViewMatrixLoc = gl.getUniformLocation( program, "modelViewMatrix" );
+  projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
+  normalMatrixLoc = gl.getUniformLocation( program, "normalMatrix" );
+*/
   texture = gl.createTexture();
   gl.bindTexture( gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -392,69 +410,51 @@ window.onload = function init() {
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
 
   // DRAWS SPHEREs
-  fillSpheres(vec3( 0.0, -0.1, 0.2), 0, vec3(0.20, 0.60, 0.80), 0.5, 0.05, vec3( 0.1, 0.1, 0.1));
-  fillSpheres(vec3( 0.0, 0.1, 0.2), 0, vec3(0.60, 0.10, 0.80), 0.5, 0.05, vec3(  0.1, 0.1, 0.1));
+  fillSpheres(vec3( 0.0, -0.1, 0.2), 0, vec3(0.20, 0.60, 0.80), 0.5, 0.05, vec3( 0.0, 0.0, 0.0));
+  fillSpheres(vec3( 0.0, 0.1, 0.2), 0, vec3(0.60, 0.10, 0.80), 0.5, 0.05, vec3(  0.0, 0.0, 0.0));
   depth_byuser = 3;
-  render();
-  /*ambientProduct = mult(lightAmbient, materialAmbient);
-  diffuseProduct = mult(lightDiffuse, materialDiffuse);
-  specularProduct = mult(lightSpecular, materialSpecular);
+/*
+  gl.uniform4fv( gl.getUniformLocation(program, 
+    "ambientProduct"),flatten(ambientProduct) );
+  gl.uniform4fv( gl.getUniformLocation(program, 
+    "diffuseProduct"),flatten(diffuseProduct) );
+  gl.uniform4fv( gl.getUniformLocation(program, 
+    "specularProduct"),flatten(specularProduct) );	
+  gl.uniform4fv( gl.getUniformLocation(program, 
+    "light_Position"),flatten(light_Position) );
+  gl.uniform1f( gl.getUniformLocation(program, 
+    "shininess"),materialShininess );
+*/
 
-  // DRAWS SPHERE
-  tetrahedron(va, vb, vc, vd, SPHERE_QUALITY);
-  centroid4dim = mix(mix(va,vb,0.5),mix(vc,vd,0.5),0.5);
-  centroid = vec3(centroid4dim[0],centroid4dim[1],centroid4dim[2])
-  reflection_sphr = 1;
-  transparency_sphr = 0;
-  surface_color_sphr = vec3(0.20, 0.60, 0.80);
-
-  var nBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, nBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, flatten(normalsArray), gl.STATIC_DRAW);
-
-  var vNormal = gl.getAttribLocation(program, "vNormal");
-  gl.vertexAttribPointer(vNormal, 4, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(vNormal);
-
-  var vBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, vBuffer);
-  gl.bufferData(gl.ARRAY_BUFFER, flatten(pointsArray), gl.STATIC_DRAW);
-
-  var vPosition = gl.getAttribLocation(program, "vPosition");
-  gl.vertexAttribPointer(vPosition, 4, gl.FLOAT, false, 0, 0);
-  gl.enableVertexAttribArray(vPosition);
-
-  camPositionLoc = gl.getUniformLocation(program, 'cameraPosition');
-  modelViewMatrixLoc = gl.getUniformLocation(program, "modelViewMatrix");
-  projectionMatrixLoc = gl.getUniformLocation(program, "projectionMatrix");
-  normalMatrixLoc = gl.getUniformLocation(program, "normalMatrix");
-
-  gl.uniform4fv(
-    gl.getUniformLocation(program, "ambientProduct"),
-    flatten(ambientProduct)
-  );
-  gl.uniform4fv(
-    gl.getUniformLocation(program, "diffuseProduct"),
-    flatten(diffuseProduct)
-  );
-  gl.uniform4fv(
-    gl.getUniformLocation(program, "specularProduct"),
-    flatten(specularProduct)
-  );
-  gl.uniform4fv(
-    gl.getUniformLocation(program, "lightPosition"),
-    flatten(lightPosition)
-  );
-  gl.uniform1f(gl.getUniformLocation(program, "shininess"), materialShininess);
+  gl.uniform4fv( gl.getUniformLocation(program, 
+  "light_Position"),flatten(light_Position) );
 
   render();
-  */
 };
 
 function render() {
-  raytrace(3);
+  raytrace();
 
-  gl.clear( gl.COLOR_BUFFER_BIT );
+  gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+/*
+  eye = vec3(radius*Math.sin(theta)*Math.cos(phi), 
+  radius*Math.sin(theta)*Math.sin(phi), radius*Math.cos(theta));
+
+  modelViewMatrix = lookAt(eye, at , up);
+  projectionMatrix = ortho(left, right, bottom, ytop, near, far);
+
+
+  normalMatrix = [
+    vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
+    vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
+    vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2])
+  ];
+          
+  gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix) );
+  gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
+  gl.uniformMatrix3fv(normalMatrixLoc, false, flatten(normalMatrix) );
+  */  
 
   gl.bindTexture( gl.TEXTURE_2D, texture);
   gl.texImage2D(
@@ -470,31 +470,4 @@ function render() {
   );
 
   gl.drawArrays( gl.TRIANGLE_FAN, 0, 4 );
-
-    //requestAnimationFrame(render);
-  /*
-  raytrace(1); //TODO: Make it work with a slider
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  cameraPosition = vec3(0,0,radius);
-
-  modelViewMatrix = lookAt(cameraPosition, at, up);
-  projectionMatrix = ortho(left, right, bottom, ytop, near, far);
-
-  normalMatrix = [
-    vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
-    vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
-    vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2]),
-  ];
-
-  gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix));
-  gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix));
-  gl.uniformMatrix3fv(normalMatrixLoc, false, flatten(normalMatrix));
-  gl.uniform3f(camPositionLoc, cameraPosition.x, cameraPosition.y, cameraPosition[2]);
-
-  for (var i = 0; i < index; i += 3) gl.drawArrays(gl.TRIANGLES, i, 3);
-
-  //IMPORTANT!! NOT REQUESTING ANOTHER FRAME FOR NOW
-  //window.requestAnimFrame(render);
-  */
 }
