@@ -16,47 +16,14 @@ var sphere_sc = [];
 var sphere_r = [];
 var sphere_em = [];
 //
-var numTimesToSubdivide = 3;
 
 var index = 0;
 
 var pointsArray = [];
 var normalsArray = [];
 
-var near = -10;
-var far = 10;
-//var radius = 2.5;
-var theta = 0.0;
-var phi = 0.0;
-var dr = (5.0 * Math.PI) / 180.0;
-
-var left = -3.0;
-var right = 3.0;
-var ytop = 3.0;
-var bottom = -3.0;
-
-var va = vec4(0.0, 0.0, -1.0, 1);
-var vb = vec4(0.0, 0.942809, 0.333333, 1);
-var vc = vec4(-0.816497, -0.471405, 0.333333, 1);
-var vd = vec4(0.816497, -0.471405, 0.333333, 1);
-
-var lightPosition = vec3(1.0, 1.0, 1.0);
-var light_Position = vec4(1.0, 1.0, 1.0, 0.0 );
-var lightAmbient = vec4(0.2, 0.2, 0.2, 1.0 );
-var lightDiffuse = vec4( 1.0, 1.0, 1.0, 1.0 );
-var lightSpecular = vec4( 1.0, 1.0, 1.0, 1.0 );
-
-var materialAmbient = vec4(1.0, 0.0, 1.0, 1.0);
-var materialDiffuse = vec4(1.0, 0.8, 0.0, 1.0);
-var materialSpecular = vec4(1.0, 1.0, 1.0, 1.0);
-var materialShininess = 20.0;
-
-var ctm;
-var ambientColor, diffuseColor, specularColor;
-
-var modelViewMatrix, projectionMatrix;
-var modelViewMatrixLoc, projectionMatrixLoc;
-var camPositionLoc;
+var lightPosition = vec3(-20, 0, 20);//vec3(0.1,1, 0.2);
+light_intensity = 1.0;
 
 var normalMatrix, normalMatrixLoc;
 
@@ -148,6 +115,10 @@ function trace( ray_orig, ray_dir, depth)
 // return color emitted by surface in ray intersection
 function shade( intersection_pt, ray_dir, depth, i)
 {
+  var sphere_clr = sphere_sc[i];
+  shadow_dir = subtract(lightPosition,intersection_pt);
+  shadow_dir_n = normalize(shadow_dir);
+  shadow_dir_unitv = shadow_dir[0] / shadow_dir_n[0];
   //var surface_color = vec3(0,0,0); // surface color to be calculated and returned.
   var reflection;
   var refraction;
@@ -156,28 +127,25 @@ function shade( intersection_pt, ray_dir, depth, i)
   var bias = 1/10000;
 
   // check if we are inside the object, view rays and normal should be opposite
-  var isInside = false;
+  /*var isInside = false;
   if( dot(ray_dir,intersection_n) > 0.0) {
     intersection_n = intersection_n.map(x => x * (-1))// -1*intersection_n;
     isInside = true;
-  }
-  
+  }*/
+  /*
   if((sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) && depth < depth_byuser) {
     // calculate REFLECTION direction & normalize
     var m = (2 * dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
     reflection_dir = normalize( reflection_dir, false);
+  }*/
+  var facing_ratio = dot(ray_dir,intersection_n)*(-1);
+  var fresnel_effect = Math.min( 1 / ( 0.1 + 0.2 * shadow_dir_unitv + 0.9 * Math.pow( shadow_dir_unitv, 2 ) ), 1 );//0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
+  var light_i = 0.3 + light_intensity * fresnel_effect * ( ( 0.5 * dot( intersection_n, shadow_dir_n ) ) + 0.7 * Math.pow( dot( intersection_n, shadow_dir_n ), 4 ) );
 
-    var facing_ratio = dot(ray_dir,intersection_n)*(-1);
-    var fresnel_effect = 0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
-
-    // trace the reflection ray
-    console.log(":< ",intersection_pt);
-    console.log(":< ",intersection_n);
-    console.log(":< ",intersection_n.map(x => x * bias));
-    console.log(":< ",reflection_dir);
-    console.log(":< ",add(intersection_pt,intersection_n.map(x => x * bias)));
-    console.log(":< ",depth+1);
+  return vec3(sphere_clr[i]*light_i);
+}
+/*
     reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1); 
     console.log(":reflection ",depth,reflection);
 
@@ -226,8 +194,7 @@ function shade( intersection_pt, ray_dir, depth, i)
   console.log("sphere_em",sphere_em[i]);
   var finalMatrix = add(surface_color,sphere_em[i]);
   console.log("returned:",finalMatrix);*/
-
-  shadow_dir = subtract(lightPosition,intersection_pt);
+/*
   for(var j = 0; j < sphere_r.length; j++)
   {
     if( closest_ray_surface_intersection( sphere_centroids[j], shadow_dir, j)){
@@ -239,7 +206,8 @@ function shade( intersection_pt, ray_dir, depth, i)
   return sphere_sc[i];
 
   return finalMatrix;
-}
+}*/
+
 
 function closest_ray_surface_intersection( ray_orig, ray_dir, i)
 {
@@ -360,10 +328,6 @@ window.onload = function init() {
   program = initShaders( gl, "vertex-shader", "fragment-shader" );
   gl.useProgram( program );
 
-  ambientProduct = mult(lightAmbient, materialAmbient);
-  diffuseProduct = mult(lightDiffuse, materialDiffuse);
-  specularProduct = mult(lightSpecular, materialSpecular);
-
   var pointsArray = [];
   var texCoordsArray = [];
 
@@ -394,11 +358,6 @@ window.onload = function init() {
   gl.vertexAttribPointer( vPosition, 2, gl.FLOAT, false, 0, 0);
   gl.enableVertexAttribArray( vPosition);
 
-    /*
-  modelViewMatrixLoc = gl.getUniformLocation( program, "modelViewMatrix" );
-  projectionMatrixLoc = gl.getUniformLocation( program, "projectionMatrix" );
-  normalMatrixLoc = gl.getUniformLocation( program, "normalMatrix" );
-*/
   texture = gl.createTexture();
   gl.bindTexture( gl.TEXTURE_2D, texture);
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
@@ -410,24 +369,12 @@ window.onload = function init() {
   gl.texParameteri( gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST );
 
   // DRAWS SPHEREs
-  fillSpheres(vec3( 0.0, -0.1, 0.2), 0, vec3(0.20, 0.60, 0.80), 0.5, 0.05, vec3( 0.0, 0.0, 0.0));
-  fillSpheres(vec3( 0.0, 0.1, 0.2), 0, vec3(0.60, 0.10, 0.80), 0.5, 0.05, vec3(  0.0, 0.0, 0.0));
-  depth_byuser = 3;
-/*
-  gl.uniform4fv( gl.getUniformLocation(program, 
-    "ambientProduct"),flatten(ambientProduct) );
-  gl.uniform4fv( gl.getUniformLocation(program, 
-    "diffuseProduct"),flatten(diffuseProduct) );
-  gl.uniform4fv( gl.getUniformLocation(program, 
-    "specularProduct"),flatten(specularProduct) );	
-  gl.uniform4fv( gl.getUniformLocation(program, 
-    "light_Position"),flatten(light_Position) );
-  gl.uniform1f( gl.getUniformLocation(program, 
-    "shininess"),materialShininess );
-*/
 
-  gl.uniform4fv( gl.getUniformLocation(program, 
-  "light_Position"),flatten(light_Position) );
+  //centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r, sphr_em) {
+  
+  fillSpheres(vec3( 0.0, 0, 20), 0, vec3(0, 1, 1), 0, 5, vec3( 0.0, 0.0, 0.0));
+  fillSpheres(vec3( 0.0, 20, 0), 0, vec3(1,1,0), 0, 5, vec3(  0.0, 0.0, 0.0));
+  depth_byuser = 3;
 
   render();
 };
@@ -435,26 +382,7 @@ window.onload = function init() {
 function render() {
   raytrace();
 
-  gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-/*
-  eye = vec3(radius*Math.sin(theta)*Math.cos(phi), 
-  radius*Math.sin(theta)*Math.sin(phi), radius*Math.cos(theta));
-
-  modelViewMatrix = lookAt(eye, at , up);
-  projectionMatrix = ortho(left, right, bottom, ytop, near, far);
-
-
-  normalMatrix = [
-    vec3(modelViewMatrix[0][0], modelViewMatrix[0][1], modelViewMatrix[0][2]),
-    vec3(modelViewMatrix[1][0], modelViewMatrix[1][1], modelViewMatrix[1][2]),
-    vec3(modelViewMatrix[2][0], modelViewMatrix[2][1], modelViewMatrix[2][2])
-  ];
-          
-  gl.uniformMatrix4fv(modelViewMatrixLoc, false, flatten(modelViewMatrix) );
-  gl.uniformMatrix4fv(projectionMatrixLoc, false, flatten(projectionMatrix) );
-  gl.uniformMatrix3fv(normalMatrixLoc, false, flatten(normalMatrix) );
-  */  
+  gl.clear( gl.COLOR_BUFFER_BIT);
 
   gl.bindTexture( gl.TEXTURE_2D, texture);
   gl.texImage2D(

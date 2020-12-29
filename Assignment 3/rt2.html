@@ -4,71 +4,12 @@
 <script id="vertex-shader" type="x-shader/x-vertex">
 
 attribute vec2 vPosition;
-attribute vec3 vNormal;
-
 attribute  vec2 vTexCoord;
 varying vec2 fTexCoord;
 
-varying vec4 fColor;
-varying vec3 R;
-
-uniform vec4 ambientProduct, diffuseProduct, specularProduct;
-uniform mat4 modelViewMatrix;
-uniform mat4 projectionMatrix;
-uniform vec4 light_Position;
-uniform float shininess;
-uniform mat3 normalMatrix;
-    
 void
 main()
 {   
-    /*
-    // pos is vertex position in eye coordinates
-    
-    vec3 pos = (modelViewMatrix * vPosition).xyz;
-    
-    // vector from vertex position to light source
-    
-    vec3 L;
-    
-    // check for directional light
-    
-    if(lightPosition.w == 0.0) L = normalize(lightPosition.xyz);
-    else L = normalize( lightPosition.xyz - pos );
-
-    // Because the eye point the is at the orgin
-    // the vector from the vertex position to the eye is
-    	
-    vec3 E = -normalize( pos );
-    
-    // halfway vector
-    
-    vec3 H = normalize( L + E );
-
-    // Transform vertex normal into eye coordinates
-    
-    vec3 N = normalize( normalMatrix*vNormal.xyz);
-    
-    R = reflect(pos, N);
-
-    // Compute terms in the illumination equation
-    vec4 ambient = ambientProduct;
-
-    float Kd = max( dot(L, N), 0.0 );
-    vec4  diffuse = Kd*diffuseProduct;
-
-    float Ks = pow( max(dot(N, H), 0.0), shininess );
-    vec4  specular = Ks * specularProduct;
-    
-    if( dot(L, N) < 0.0 ) {
-	specular = vec4(0.0, 0.0, 0.0, 1.0);
-    } 
-
-    gl_Position = projectionMatrix * modelViewMatrix * vPosition;
-    fColor = ambient + diffuse +specular;
-    fColor.a = 1.0;
-    */
-    
     fTexCoord = vTexCoord;
     gl_Position =  vec4(vPosition.x, vPosition.y, 0.0, 1.0);
 }
@@ -80,14 +21,12 @@ precision mediump float;
 
 varying vec2 fTexCoord;
 uniform sampler2D texture;
-varying vec4 fColor;
     
 void
 main()
 {
     vec4 color = texture2D(texture, fTexCoord);
     gl_FragColor = color;
-    //gl_FragColor = fColor*color;
         
 }
 </script>
