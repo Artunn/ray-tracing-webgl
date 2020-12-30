@@ -2,7 +2,7 @@ var canvas;
 var gl;
 //
 //var centroid,centroid2;
-var outer_space_color = vec3(0.8, 0.8, 0.8);
+var outer_space_color = vec3(0.1, 0.1, 0.1);
 
 //var reflection_sphr;
 //var transparency_sphr;
@@ -24,6 +24,7 @@ var normalsArray = [];
 
 var redx = 0.0,redy = -0.2,redz = -0.4;
 var lightx = 0.1,lighty = 0, lightz= -3;
+var reflect1 = 0.5,reflect2 = 0.5, reflect3= 0.5;
 
 var lightPosition = vec3(lightx, lighty, lightz);//vec3(0.1,1, 0.2);
 light_intensity = 2.5;
@@ -36,7 +37,7 @@ var up = vec3(0.0, 1.0, 0.0);
 
 SPHERE_QUALITY = 5;
 
-var imageSize = 128;
+var imageSize = 200;
 
 // Create image data
 // Here i used Uint8ClampedArray instead of Uint8Array so that it is clamped.
@@ -79,7 +80,7 @@ function raytrace()
 }
 
 // fire a ray, return RGB
-function trace( ray_orig, ray_dir, depth) 
+function trace( ray_orig, ray_dir, depth, isShadow) 
 {
   // find the min distanced intersection after looping for each sphere
   var intersection = closest_ray_surface_intersection(ray_orig,ray_dir)
@@ -89,14 +90,14 @@ function trace( ray_orig, ray_dir, depth)
     //console.log("depth:",depth);
     //{min_dist: mindist, distance: dist, sphere_index:mini,intersection_pt:intersection_pt_i };
     //console.log(intersection);
-    return shade( intersection.intersection_pt, ray_dir, depth, intersection.sphere_index);
+    return shade( intersection.intersection_pt, ray_dir, depth, intersection.sphere_index, isShadow);
   }
   // no intersection, use background color
   return outer_space_color; 
 }
 
 // return color emitted by surface in ray intersection
-function shade( intersection_pt, ray_dir, depth, i)
+function shade( intersection_pt, ray_dir, depth, i, isShadow)
 {
   //console.log(sphere_centroids)
   var sphere_clr = sphere_sc[i];
@@ -120,7 +121,7 @@ function shade( intersection_pt, ray_dir, depth, i)
   var fresnel_effect = Math.min( 1 / ( 0.9 + 0.2 * shadow_dir_unitv + 0.9 * Math.pow( shadow_dir_unitv, 3 ) ), 1 );//0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
  //console.log(fresnel_effect);
   var light_i = 0.3 + light_intensity * fresnel_effect * ( ( 0.5 * dot( intersection_n, shadow_dir_n ) ) + 0.7 * Math.pow( dot( intersection_n, shadow_dir_n ), 4 ) );
-  if((sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) && depth < depth_byuser) {
+  if(sphere_ref[i] > 0.0&& depth < depth_byuser) {
     // calculate REFLECTION direction & normalize
     var m = (2 * dot( ray_dir, intersection_n));
     var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
@@ -130,8 +131,8 @@ function shade( intersection_pt, ray_dir, depth, i)
   // var facing_ratio = dot(ray_dir,intersection_n)*(-1);
 
 
-    reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1);
-    console.log(reflection);
+    reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1, false);
+    //onsole.log(reflection);
     //return add(sphere_sc[m].map(x =>x * sphere_ref[i]), (sphere_clr. map(x => x* (1 - sphere_ref[i]))));
     //console.log(":reflection ",depth,reflection);
 
@@ -149,7 +150,22 @@ function shade( intersection_pt, ray_dir, depth, i)
     //return vec3(sphere_clr.map(x=> x*light_i)); 
     let ssss = sphere_clr.map(x=> x*light_i);
     //console.log(ssss,reflection,reflection.map(x => x * fresnel_effect))
-    return vec3(add(reflection.map(x => x * sphere_ref[i]),sphere_clr.map(x => x *light_i).map(x=> x * (1 - sphere_ref[i])) ));
+
+    //return isShadow ?  vec3(0,0,0) : vec3(add(reflection.map(x => x * sphere_ref[i]), sphere_clr.map(x => x *light_i ).map(x=> x * (1 - sphere_ref[i])) ));
+    return isShadow ?  vec3(0,0,0) : vec3(add(reflection.map(x => x * sphere_ref[i]), sphere_clr.map(x => x *light_i ).map(x=> x * (1 - sphere_ref[i])) ));
+  }else if(sphere_ref[i] == 0.0 && depth < depth_byuser){
+    var m = (2 * dot( ray_dir, intersection_n));
+    var reflection_dir = vec3(subtract(ray_dir, intersection_n.map(x => x * m)));
+    reflection_dir = normalize( reflection_dir, false);
+
+
+  // var facing_ratio = dot(ray_dir,intersection_n)*(-1);
+
+
+    reflection = trace( add(intersection_pt,intersection_n.map(x => x * bias)), reflection_dir, depth+1, true);
+    //console.log(reflection);
+
+    return vec3(mix(reflection , sphere_clr.map(x => x * light_i), parseFloat(1 - sphere_ref[i])));
   }
   
   //TODO
@@ -165,7 +181,7 @@ function shade( intersection_pt, ray_dir, depth, i)
           return sphere_sc[i];
         }
         else{
-          return sphere_clr.map(x=> (x * 0.8) + (light_i * 0.2));
+          return sphere_clr.map(x=> (x * 0.7) + (light_i * 0.3));
         }
         ////console.log("SHADOW: ",depth,vec3(0,0,0));
         //return vec3(sphere_clr.map(x=> x*light_i))
@@ -380,41 +396,59 @@ window.onload = function init() {
   // DRAWS SPHEREs
 
   //centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r, sphr_em) {
-  depth_byuser = 3;
+  depth_byuser = 5;
 
-  document.getElementById("redx").onchange = function () {
+  document.getElementById("redx").oninput = function () {
     redx = event.srcElement.value;
-    console.log(event.srcElement.value)
+    //console.log(event.srcElement.value)
     render();
   };
 
-  document.getElementById("redy").onchange = function () {
+  document.getElementById("redy").oninput = function () {
     redy = event.srcElement.value;
-    console.log(event.srcElement.value)
+    //console.log(event.srcElement.value)
     render();
   };
 
-  document.getElementById("redz").onchange = function () {
+  document.getElementById("redz").oninput = function () {
     redz = event.srcElement.value;
-    console.log(event.srcElement.value)
+    ////console.log(event.srcElement.value)
     render();
   };
 
-  document.getElementById("lightx").onchange = function () {
+  document.getElementById("lightx").oninput = function () {
     lightx = event.srcElement.value;
-    console.log(event.srcElement.value)
+    //console.log(event.srcElement.value)
     render();
   };
 
-  document.getElementById("lighty").onchange = function () {
+  document.getElementById("lighty").oninput = function () {
     lighty = event.srcElement.value;
-    console.log(event.srcElement.value)
+    //console.log(event.srcElement.value)
     render();
   };
 
-  document.getElementById("lightz").onchange = function () {
+  document.getElementById("lightz").oninput = function () {
     lightz = event.srcElement.value;
-    console.log(event.srcElement.value)
+    //console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("reflect1").oninput = function () {
+    reflect1 = event.srcElement.value;
+    //console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("reflect2").oninput = function () {
+    reflect2 = event.srcElement.value;
+    //console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("reflect3").oninput = function () {
+    reflect3 = event.srcElement.value;
+    //console.log(event.srcElement.value)
     render();
   };
 
@@ -424,9 +458,9 @@ window.onload = function init() {
 function render() {
   //centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r, sphr_em
   resetSpheres()
-  fillSpheres(vec3(redx, redy, redz), 0.2, vec3(1,0,0), 0.3, 0.09, vec3(  0.0, 0.0, 0.0));  
-  fillSpheres(vec3( 0.0, -0.1, 0.4), 0.2, vec3(0, 1, 0), 0.3, 0.09, vec3( 0.0, 0.0, 0.0));
-  fillSpheres(vec3( 0.2, -0.2, 0.4), 0.2, vec3(0,0,1), 0.3, 0.09, vec3(  0.0, 0.0, 0.0));
+  fillSpheres(vec3(redx, redy, redz), 0.2, vec3(1,0,0), reflect1, 0.09, vec3(  0.0, 0.0, 0.0));  
+  fillSpheres(vec3( 0.0, -0.1, 0.2), 0.2, vec3(0, 1, 0), reflect2, 0.09, vec3( 0.0, 0.0, 0.0));
+  fillSpheres(vec3( 0.2, -0.2, 0.4), 0.2, vec3(0,0,1), reflect3, 0.09, vec3(  0.0, 0.0, 0.0));
 
   lightPosition = vec3(lightx, lighty, lightz);
   raytrace();
