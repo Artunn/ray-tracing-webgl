@@ -22,8 +22,11 @@ var index = 0;
 var pointsArray = [];
 var normalsArray = [];
 
-var lightPosition = vec3(0.5, 0, -2);//vec3(0.1,1, 0.2);
-light_intensity = 1;
+var redx = 0.0,redy = -0.2,redz = -0.4;
+var lightx = 0.1,lighty = 0, lightz= -3;
+
+var lightPosition = vec3(lightx, lighty, lightz);//vec3(0.1,1, 0.2);
+light_intensity = 4.5;
 
 var normalMatrix, normalMatrixLoc;
 
@@ -59,7 +62,7 @@ function raytrace()
     {
       ////console.log(imageSize);
       pxl_x = ( x / imageSize - 0.5)*2;
-      pxl_y = ( y / imageSize - 0.5)*2;
+      pxl_y = -1 * ( y / imageSize - 0.5)*2;
       pxl = vec3( pxl_x, pxl_y, 1.0);
       dir = normalize( pxl, false);
 
@@ -114,7 +117,8 @@ function shade( intersection_pt, ray_dir, depth, i)
     isInside = true;
   }
 
-  var fresnel_effect = Math.min( 1 / ( 0.1 + 0.2 * shadow_dir_unitv + 0.9 * Math.pow( shadow_dir_unitv, 2 ) ), 1 );//0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
+  var fresnel_effect = Math.min( 1 / ( 0.9 + 0.2 * shadow_dir_unitv + 0.9 * Math.pow( shadow_dir_unitv, 3 ) ), 1 );//0.1 + (Math.pow(1 - facing_ratio, 3)) * 0.9;
+ //console.log(fresnel_effect);
   var light_i = 0.3 + light_intensity * fresnel_effect * ( ( 0.5 * dot( intersection_n, shadow_dir_n ) ) + 0.7 * Math.pow( dot( intersection_n, shadow_dir_n ), 4 ) );
   if((sphere_ref[i] > 0.0 || sphere_tr[i] > 0.0) && depth < depth_byuser) {
     // calculate REFLECTION direction & normalize
@@ -141,8 +145,8 @@ function shade( intersection_pt, ray_dir, depth, i)
     //console.log("SHADED: ",depth,vec3(mult(reflection.map(x => x * fresnel_effect), sphere_sc[i])));
     //return vec3(sphere_clr.map(x=> x*light_i)); 
     let ssss = sphere_clr.map(x=> x*light_i);
-    console.log(ssss,reflection,reflection.map(x => x * fresnel_effect))
-    return vec3(mult(reflection.map(x => x * fresnel_effect),ssss ));
+    //console.log(ssss,reflection,reflection.map(x => x * fresnel_effect))
+    return vec3(mult(reflection.map(x => x * fresnel_effect),sphere_clr )).map(x => x * light_i *light_i);
   }
   
   // obj is OPAQUE, don't raytrace anymore.
@@ -176,19 +180,24 @@ function shade( intersection_pt, ray_dir, depth, i)
   //TODO
   //console.log("surface_color",surface_color);
   //console.log("sphere_em",sphere_em[i]);
-  var finalMatrix = add(surface_color,sphere_em[i]);
+  //var finalMatrix = add(surface_color,sphere_em[i]);
   //console.log("returned:",finalMatrix);
-  // for(var j = 0; j < sphere_r.length; j++)
-  // {
-  //   if(i != j){
-  //     if( closest_ray_surface_intersection( sphere_centroids[j], shadow_dir, j)){
-  //       ////console.log("SHADOW: ",depth,vec3(0,0,0));
-  //       //return vec3(sphere_clr.map(x=> x*light_i))
-  //       return add(vec3(0,0,0).map(x=>x * 0.3),sphere_sc[i].map(x => x* 0.7)).map(x => x * light_i);
-  //     }
-  //   }
-   
-  // }
+  for(var j = 0; j < sphere_r.length; j++)
+  {
+    var intersectedsphere =  closest_ray_surface_intersection( sphere_centroids[i], shadow_dir, j);
+      if(intersectedsphere){
+        if(j == intersectedsphere.sphere_index){
+          return sphere_sc[i];
+        }
+        else{
+          return sphere_clr.map(x=> (x * 0.8) + (light_i * 0.2));
+        }
+        ////console.log("SHADOW: ",depth,vec3(0,0,0));
+        //return vec3(sphere_clr.map(x=> x*light_i))
+        
+      }
+  
+  }
   //console.log("ELSE: ",depth,sphere_sc[i]);
   return sphere_sc[i];
 
@@ -325,6 +334,15 @@ function fillSpheres(centroid, transparency_sphr, surface_color_sphr, reflection
   sphere_em.push(sphr_em);
 }
 
+function resetSpheres() {
+  sphere_centroids = [];
+  sphere_tr = [];
+  sphere_sc = [];
+  sphere_ref = [];
+  sphere_r = [];
+  sphere_em = [];
+}
+
 window.onload = function init() {
   canvas = document.getElementById("gl-canvas");
 
@@ -387,19 +405,58 @@ window.onload = function init() {
   // DRAWS SPHEREs
 
   //centroid, transparency_sphr, surface_color_sphr, reflection_sphr, sphr_r, sphr_em) {
-  
-    fillSpheres(vec3( 0.0, 0.1, 0.4), 0, vec3(0, 1, 1), 0.4, 0.1, vec3( 0.0, 0.0, 0.0));
-    fillSpheres(vec3( 0.0, -0.1, 0.4), 0.2, vec3(1,0,0), 0, 0.07, vec3(  0.0, 0.0, 0.0));
-
   depth_byuser = 3;
+
+  document.getElementById("redx").onchange = function () {
+    redx = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("redy").onchange = function () {
+    redy = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("redz").onchange = function () {
+    redz = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("lightx").onchange = function () {
+    lightx = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("lighty").onchange = function () {
+    lighty = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
+
+  document.getElementById("lightz").onchange = function () {
+    lightz = event.srcElement.value;
+    console.log(event.srcElement.value)
+    render();
+  };
 
   render();
 };
 
 function render() {
+  resetSpheres()
+  fillSpheres(vec3(redx, redy, redz), 0.2, vec3(1,0,0), 0, 0.09, vec3(  0.0, 0.0, 0.0));  
+  fillSpheres(vec3( 0.0, -0.1, 0.4), 0.2, vec3(0, 1, 0), 0, 0.09, vec3( 0.0, 0.0, 0.0));
+  fillSpheres(vec3( 0.2, -0.2, 0.4), 0.2, vec3(0,0,1), 0, 0.09, vec3(  0.0, 0.0, 0.0));
+
+  lightPosition = vec3(lightx, lighty, lightz);
   raytrace();
 
-  gl.clear( gl.COLOR_BUFFER_BIT);
+  gl.enable(gl.DEPTH_TEST);
+  gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 
   gl.bindTexture( gl.TEXTURE_2D, texture);
   gl.texImage2D(
