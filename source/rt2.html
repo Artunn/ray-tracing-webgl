@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html>
+<link rel="stylesheet" href="rthw.css">
+<script id="vertex-shader" type="x-shader/x-vertex">
+
+attribute vec2 vPosition;
+attribute  vec2 vTexCoord;
+varying vec2 fTexCoord;
+
+void
+main()
+{   
+    fTexCoord = vTexCoord;
+    gl_Position =  vec4(vPosition.x, vPosition.y, 0.0, 1.0);
+}
+</script>
+
+<script id="fragment-shader" type="x-shader/x-fragment">
+
+precision mediump float;
+
+varying vec2 fTexCoord;
+uniform sampler2D texture;
+    
+void
+main()
+{
+    vec4 color = texture2D(texture, fTexCoord);
+    gl_FragColor = color;
+        
+}
+</script>
+
+<script type="text/javascript" src="Common/webgl-utils.js"></script>
+<script type="text/javascript" src="Common/initShaders.js"></script>
+<script type="text/javascript" src="Common/MV.js"></script>
+<script type="text/javascript" src="rt.js"></script>
+
+<body>
+  <div class="wholewrapper">
+    <div class="canvaswrapper">
+<canvas id="gl-canvas" width="800" height="800">
+Oops ... your browser doesn't support the HTML5 canvas element
+</canvas>
+</div>
+<div class="sliderwrapper">
+<div>
+  Red sphere X
+  <div>
+    -1
+    <input
+      id="redx"
+      type="range"
+      min="-1"
+      max="1"
+      step="0.05"
+      value="0"
+    />
+    1
+  </div>
+</div>
+<div>
+  Red sphere Y
+  <div>
+    -1
+    <input
+      id="redy"
+      type="range"
+      min="-1"
+      max="1"
+      step="0.05"
+      value="0"
+    />
+    1
+  </div>
+</div>
+<div>
+  Red sphere Z
+  <div>
+    -1
+    <input
+      id="redz"
+      type="range"
+      min="-1"
+      max="1"
+      step="0.05"
+      value="0"
+    />
+    1
+  </div>
+</div>
+<div>
+  Light X
+  <div>
+    -3
+    <input
+      id="lightx"
+      type="range"
+      min="-3"
+      max="3"
+      step="0.1"
+      value="0"
+    />
+    3
+  </div>
+</div>
+<div>
+  Light Y
+  <div>
+    -3
+    <input
+      id="lighty"
+      type="range"
+      min="-3"
+      max="3"
+      step="0.1"
+      value="0"
+    />
+    3
+  </div>
+</div>
+<div>
+  Light Z
+  <div>
+    -3
+    <input
+      id="lightz"
+      type="range"
+      min="-1"
+      max="1"
+      step="0.1"
+      value="0"
+    />
+    3
+  </div>
+</div>
+<div>
+  Light Intensity
+  <div>
+    0
+    <input
+      id="lightintensity"
+      type="range"
+      min="-2.5"
+      max="2.5"
+      step="0.5"
+      value="0"
+    />
+    5
+  </div>
+</div>
+<div>
+  Red Sphere Reflection
+  <div>
+    0
+    <input
+      id="reflect1"
+      type="range"
+      min="0"
+      max="1"
+      step="0.1"
+      value="0.5"
+    />
+    1
+  </div>
+</div>
+<div>
+  Green Sphere Reflection
+  <div>
+    0
+    <input
+      id="reflect2"
+      type="range"
+      min="0"
+      max="1"
+      step="0.1"
+      value="0.5"
+    />
+    1
+  </div>
+</div>
+<div>
+  Blue Sphere Reflection
+  <div>
+    0
+    <input
+      id="reflect3"
+      type="range"
+      min="0"
+      max="1"
+      step="0.1"
+      value="0.5"
+    />
+    1
+  </div>
+</div>
+<div>
+  Depth
+  <div>
+    1
+    <input
+      id="depth"
+      type="range"
+      min="1"
+      max="10"
+      step="1"
+      value="5"
+    />
+    10
+  </div>
+</div>
+</div>
+</body>
+</div>
+</html>

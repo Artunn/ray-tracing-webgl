@@ -1,0 +1,12 @@
+.wholewrapper{
+    display: flex;
+    align-items: center;
+  justify-content: center;
+}
+.canvaswrapper{
+
+}
+.sliderwrapper{
+    padding: 7rem 0 0 2rem;
+    height: 800px;    
+}
